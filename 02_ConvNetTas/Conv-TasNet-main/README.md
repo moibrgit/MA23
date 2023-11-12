@@ -1,4 +1,8 @@
 # Conv-TasNet
+
+https://github.com/philyoun/Conv-TasNet
+
+
 tensorflow 2.x implementation of [Conv-TasNet, Y Luo et al.(2018)](https://github.com/naplab/Conv-TasNet)
 
 `.py` structure is more appropriate for this project, but I used the jupyter notebook with the `import_ipynb` module, in order to make things more natural.
