@@ -1,9 +1,8 @@
-import os
+# import os
 import tensorflow as tf
- 
+import logging
 
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+
 
 
 
@@ -28,6 +27,7 @@ class PositionalEncoding(tf.keras.Model):
 
     def __init__(self, input_size, max_len=2500):
         super().__init__()
+        logging.info("Initializing PositionalEncoding with input_size: {} and max_len: {}".format(input_size, max_len))
         self.max_len = max_len
         positions = tf.expand_dims(tf.range(0, self.max_len,dtype=float), axis=1)
         denominator = tf.exp(
@@ -46,12 +46,14 @@ class PositionalEncoding(tf.keras.Model):
         x : tensor
             Input feature shape (batch, time, fea)
         """
+        logging.info("PositionalEncoding call")
         return self.pe[:, : input.shape[1]]
     
 
 class Transformer_Layer(tf.keras.Model):
     def __init__(self, num_heads=8, d_model=256, d_ffn=2048):
         super().__init__()
+        logging.info("Initializing Transformer Layer with num_heads: {}, d_model: {}, d_ffn: {}".format(num_heads, d_model, d_ffn))
         self.layer_norm1=tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.layer_norm2=tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.mha = tf.keras.layers.MultiHeadAttention(num_heads, key_dim=int(d_model/num_heads))
@@ -60,6 +62,7 @@ class Transformer_Layer(tf.keras.Model):
 
 
     def call(self, input, training=None, mask=None):
+        logging.info("Transformer Layer call")
         z1 = input
         # positional encoding
         z_perm = self.layer_norm1(z1)
@@ -79,6 +82,7 @@ class Ca_Block(tf.keras.Model):
     block_list: list
     def __init__(self, num_heads=8, d_model=256, d_ffn=2048, k=4):
         super().__init__()
+        logging.info("Initializing Ca_Block with num_heads: {}, d_model: {}, d_ffn: {}, k: {}".format(num_heads, d_model, d_ffn, k))
         self.layer_norm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.block_list=[0]*k
         self.pos_enc = PositionalEncoding(d_model)  
@@ -86,6 +90,7 @@ class Ca_Block(tf.keras.Model):
             self.block_list[i] = Transformer_Layer(num_heads=num_heads, d_model=d_model, d_ffn=d_ffn)
 
     def call(self, input, training=None, mask=None):
+        logging.info("Ca_Block call")
         z = input
         z1 = z + self.pos_enc(z)
         for i in range(len(self.block_list)):
@@ -96,6 +101,7 @@ class Ca_Block(tf.keras.Model):
 class Sepformer(tf.keras.Model):
     def __init__(self, enc_filters=256, enc_filter_len=16, enc_filter_stride=8, chunk_len=250, chunk_overlap=0.5, speakers=2, k=8,num_layer=2):
         super().__init__()
+        logging.info("Initializing Sepformer")
         self.enc_conv1=tf.keras.layers.Conv1D(enc_filters,enc_filter_len, enc_filter_stride, activation='relu')
         self.enc_group_norm=tf.keras.layers.GroupNormalization(groups=1, axis=-1,epsilon=1e-8)
 
@@ -123,8 +129,17 @@ class Sepformer(tf.keras.Model):
 
 
     def call(self, input, training=None, mask=None):
+        logging.info("Sepformer call")
         # encoder
-        #x1 = tf.expand_dims(input, axis=2)
+        # x1 = tf.expand_dims(input, axis=2)
+        # x1 = tf.expand_dims(input, axis=-1)  # Add a dimension of size 1  #FIXME: Add extra dim because of num_channels of the tensorflow
+
+         # Ensure the input is expanded to 3D (batch_size, sequence_length, num_channels)
+        if len(input.shape) == 2:
+            # Reshape input from shape (batch_size, sequence_length) to (batch_size, sequence_length, 1)
+            input = tf.expand_dims(input, axis=-1) 
+
+
         x1 = self.enc_conv1(input)
         # preproc
         h = self.enc_group_norm(x1)
