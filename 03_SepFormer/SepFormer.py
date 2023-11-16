@@ -53,7 +53,7 @@ class PositionalEncoding(tf.keras.Model):
 class Transformer_Layer(tf.keras.Model):
     def __init__(self, num_heads=8, d_model=256, d_ffn=2048):
         super().__init__()
-        logging.info("Initializing Transformer Layer with num_heads: {}, d_model: {}, d_ffn: {}".format(num_heads, d_model, d_ffn))
+        logging.debug("Initializing Transformer Layer with num_heads: {}, d_model: {}, d_ffn: {}".format(num_heads, d_model, d_ffn))
         self.layer_norm1=tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.layer_norm2=tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.mha = tf.keras.layers.MultiHeadAttention(num_heads, key_dim=int(d_model/num_heads))
@@ -62,13 +62,15 @@ class Transformer_Layer(tf.keras.Model):
 
 
     def call(self, input, training=None, mask=None):
-        logging.info("Transformer Layer call")
+        logging.debug("Transformer Layer call")
         z1 = input
         # positional encoding
         z_perm = self.layer_norm1(z1)
         #z_perm = tf.transpose(z_perm, (1, 0, 2))
-        print('z_perm', z_perm.shape)
+        
+        # print('z_perm', z_perm.shape)
         z_perm = self.mha(z_perm, z_perm)
+        
         #z_perm = tf.transpose(z_perm, (1, 0, 2))
         z2 = z_perm+z1
         z_perm = self.layer_norm2(z2)
@@ -82,7 +84,7 @@ class Ca_Block(tf.keras.Model):
     block_list: list
     def __init__(self, num_heads=8, d_model=256, d_ffn=2048, k=4):
         super().__init__()
-        logging.info("Initializing Ca_Block with num_heads: {}, d_model: {}, d_ffn: {}, k: {}".format(num_heads, d_model, d_ffn, k))
+        logging.debug("Initializing Ca_Block with num_heads: {}, d_model: {}, d_ffn: {}, k: {}".format(num_heads, d_model, d_ffn, k))
         self.layer_norm1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)
         self.block_list=[0]*k
         self.pos_enc = PositionalEncoding(d_model)  
@@ -90,7 +92,7 @@ class Ca_Block(tf.keras.Model):
             self.block_list[i] = Transformer_Layer(num_heads=num_heads, d_model=d_model, d_ffn=d_ffn)
 
     def call(self, input, training=None, mask=None):
-        logging.info("Ca_Block call")
+        logging.debug("Ca_Block call")
         z = input
         z1 = z + self.pos_enc(z)
         for i in range(len(self.block_list)):
@@ -174,9 +176,15 @@ class Sepformer(tf.keras.Model):
         h4 = self.final_output(h4) * self.final_gate(h4)
         m = self.end_conv1x1(h4)
         m = tf.stack(tf.split(m, self.speakers, axis=0))
+
         # apply mask and decodeing
         x1 = tf.stack([x1] * self.speakers)
         sep_h = x1*m
         est_source = tf.concat([self.dec_conv1(sep_h[i]) for i in range(self.speakers)], axis=-1)
         est_source = tf.expand_dims(tf.transpose(est_source,(0,2,1)),-1)
-        return tf.cast(est_source,tf.float64)
+
+
+        print(f"** My Model est_source:{est_source} - {type(est_source)}") # FIXME: check the data type
+        print(f"** My Model est_source:{est_source[:][0][0][0][0]} - {type(est_source)}") # FIXME: check the data type
+        
+        return tf.cast(est_source, tf.float64)

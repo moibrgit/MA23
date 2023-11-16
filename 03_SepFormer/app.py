@@ -9,7 +9,7 @@ from pathlib import Path
 from datetime import datetime
 from sklearn.model_selection import train_test_split
 from sepformer import Sepformer  # Ensure this is correctly imported
-from loss import SiSNR  
+from loss import SiSNR, SDR  
 from sisnr import SiSNRLoss 
 import random
 
@@ -28,10 +28,10 @@ SEED = 50
 random.seed(SEED)
 tf.random.set_seed(SEED)
 
-DATA_PATH = Path("../00_Dataset/Datenbank")
+DATA_PATH = Path("../00_Dataset/MyMerged/20231116_110630/Data/")
 BASE_SAVE_PATH = Path("./models")
 BATCH_SIZE = 32
-EPOCHS = 10
+EPOCHS = 1
 LEARNING_RATE = 0.001
 USE_GPU = False  # Set to False to use CPU, or True for GPU
 
@@ -63,10 +63,16 @@ def load_audio_data(file_path):
     return file_names, audios, labels
 
 
-def sisnr_loss(y_true, y_pred):
+# def sisnr_loss(y_true, y_pred):
+
+def sisnr_loss():
     # SiSNR Loss Function
     #     
     # return SiSNR(y_true, y_pred)
+    
+    return SiSNR()
+    return SDR()
+    
     # return SiSNRLoss()
     return SiSNRLoss(y_true, y_pred)
 
@@ -83,7 +89,7 @@ class TrainingProgressCallback(tf.keras.callbacks.Callback):
 def train_model(model, train_data, val_data):
     optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
     
-    model.compile(optimizer=optimizer, loss=SiSNRLoss())
+    model.compile(optimizer=optimizer, loss=sisnr_loss())
     callbacks = [TrainingProgressCallback()]
     
     logging.info("Start model fitting")

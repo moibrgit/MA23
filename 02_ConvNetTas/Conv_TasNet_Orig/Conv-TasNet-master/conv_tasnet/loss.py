@@ -37,19 +37,4 @@ class SDR(tf.keras.losses.Loss):
         self.epsilon = epsilon
 
     def call(self, s, s_hat):
-        # Ensure inputs are of type float64
-        # FIXME: Error because s (original singal) is string and s_hat(estimated signal) ist float 64. I tried to cast, but didnt word
-        # 
-        print(f"S: {s}")
-        print(f"S_hat: {s_hat}")
-
-        s = tf.cast(s, tf.float64)
-        s_hat = tf.cast(s_hat, tf.float64)
-
-        # Check that inputs are not strings
-        if not tf.is_tensor(s) or s.dtype.is_floating != True:
-            raise TypeError("Input 's' must be a floating point tensor")
-        if not tf.is_tensor(s_hat) or s_hat.dtype.is_floating != True:
-            raise TypeError("Input 's_hat' must be a floating point tensor")
-
         return 20 * tf.math.log(tf.norm(s_hat - s) / (tf.norm(s) + self.epsilon) + self.epsilon) / math.log(10)
