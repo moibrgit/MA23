@@ -156,7 +156,8 @@ def process_files():
 
             if noise_rms > orig_rms:
                 amplification_factor = noise_rms / orig_rms
-                orig_audio = original_data * amplification_factor
+                # orig_audio = original_data * amplification_factor
+                original_data = original_data * amplification_factor
 
             # Normalize volume after amplification
             original_data = librosa.util.normalize(original_data)
