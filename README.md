@@ -24,7 +24,11 @@
 
 
 
-
+## Run the script on GPU Server
+Use the following venv and python version 
+~~~
+> /isip/Public/pallenberg/venv/sepformerTaylorTFPytorch/bin/python3.10 
+~~~
 
 ## Checklist 
 

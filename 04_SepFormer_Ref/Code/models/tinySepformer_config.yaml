@@ -1,0 +1,72 @@
+general:
+  wavvectorSize: 8000
+  numberSpeaker: &speaker 2
+
+
+encoder:
+  filters: &filters 256
+  kernelSize: &kernelsize 16
+  strideFactor: &stridefactor 8
+
+
+maskingNetwork:
+  filters: *filters
+  numberSpeakers: *speaker
+
+chunk:
+  filters: *filters
+  overlap: &overlapFactor 0.5  # Percentage value as decimal number
+  S: &chunkSize 250  # Length of a window block
+  padEnd: True
+
+
+nMask:
+  nTimes: 4
+
+
+caBlock:
+  parameterSharing: True
+  numHeads: 8
+
+
+intraCA:
+  general:
+    nTimes: &timesCABlock 4  # Paper: n has the same value in both blocks
+    Da: 64
+    Dc: 192
+  separableConvolution:
+    kernelSize: 51
+  feedForward:
+    Df: 1024
+    filtersModel: *filters
+    dropoutRate: 0.1
+
+
+interCA:
+  general:
+    nTimes: *timesCABlock  # Paper: n has the same value in both blocks
+    Da: 192
+    Dc: 64
+  separableConvolution:
+    kernelSize: 11
+  feedForward:
+    Df: 1024
+    filtersModel: *filters
+    dropoutRate: 0.1
+
+
+overlapAdd:
+  d: *filters
+  frameSize: *chunkSize
+  overlap: *overlapFactor
+  k: *speaker
+
+split:
+  filters: *filters
+  speaker: *speaker
+
+
+decoder:
+  filters: 1
+  kernelSize: *kernelsize
+  strideFactor: *stridefactor

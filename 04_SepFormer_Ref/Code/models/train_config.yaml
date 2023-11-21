@@ -1,0 +1,16 @@
+loadTensor:
+  pathLibrimixAsNpy: '/isip/Public/spruenken/LibriMix/0.25/min/'
+  mixType: 'mix_clean'  # 'mix_both' or 'mix_clean'
+
+loadTrainTensor:
+  shuffle: True
+  trainType: 'train-100'  # LibriMix: 'train-100' or 'train-360', wsj0-2mix: 'train'
+
+lossFunction:
+  speakers: 2  # Currently only implemented for two speakers in train.py
+
+train:
+  epochs: 150
+  batchSize: 8
+  learningRate: 0.00015
+  modelPath: '/isip/Users/spruenken/Documents/Models'

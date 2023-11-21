@@ -28,11 +28,24 @@ SEED = 50
 random.seed(SEED)
 tf.random.set_seed(SEED)
 
-DATA_PATH = Path("../00_Dataset/MyMerged/20231116_110630/Data/")
+# DATA_PATH_MIXED = Path("../00_Dataset/MyMerged/20231116_110630/Data/")
+# DATA_PATH_CLEAN = Path("../00_Dataset/DS_PhysioNet/training/all/")
+
+DATA_PATH_MIXED = Path("./Data/mixed/")
+DATA_PATH_CLEAN = Path("./Data/clean")
+
+DATA_PATH_MIXED_TRAIN = DATA_PATH_MIXED / "train"
+DATA_PATH_MIXED_VAL= DATA_PATH_MIXED / "val"
+
+
+TENSOR_SHUFFLE = True
+
 BASE_SAVE_PATH = Path("./models")
-BATCH_SIZE = 32
+BATCH_SIZE = 8
 EPOCHS = 1
 LEARNING_RATE = 0.001
+SR = 8000 # or None
+
 USE_GPU = False  # Set to False to use CPU, or True for GPU
 
 # Create subfolder with datetime
@@ -45,25 +58,38 @@ except Exception as e:
     logging.error(f"Error creating training subfolder: {e}")
 
 
-
-
 # Load and preprocess audio data
 def load_audio_data(file_path):
-    file_names, audios, labels = [], [], []
+    file_names, audios_mixed, audios_clean = [], [], [] 
     try:
-        for file in file_path.glob("*.wav"):
-            audio, _ = librosa.load(file, sr=None)
-            audios.append(audio)
-            label = file.stem.split('-')[0]
-            labels.append(label)
-            file_names.append(file.name)
-        logging.info("Audio data loaded successfully.")
+        for file_mixed in file_path.rglob("*.wav"):
+
+            # Load mixed audio file
+            audio_mixed, _ = librosa.load(file_mixed, sr=SR)
+            audios_mixed.append(audio_mixed)
+            
+            # get the clean file name from the audio_mixed_file name --> merg_a0001_173559.wav -> a0001.wav
+            
+            clean_file_name = file_mixed.stem.split('_')[1] + '.wav'
+            
+            clean_file_path = DATA_PATH_CLEAN / clean_file_name
+
+            # Load clean audio file --> My Label
+            if clean_file_path.exists():            
+                audio_clean, _ = librosa.load(clean_file_path, sr=SR)
+            else:
+                logging.error("Clean Audio: {clean_file_name} is not found")        
+
+           
+
+            audios_clean.append(audio_clean)
+            file_names.append(file_mixed.name)
+
+        logging.debug("Audio data loaded successfully. {file.name}")
     except Exception as e:
-        logging.error(f"Error loading audio data: {e}")
-    return file_names, audios, labels
+        logging.error(f"Error loading audio data : {e}")
+    return file_names, audios_mixed, audios_clean
 
-
-# def sisnr_loss(y_true, y_pred):
 
 def sisnr_loss():
     # SiSNR Loss Function
@@ -85,48 +111,59 @@ class TrainingProgressCallback(tf.keras.callbacks.Callback):
                 f.write(','.join(logs.keys()) + '\n')
             f.write(','.join(str(log) for log in logs.values()) + '\n')
 
-# Train the model
+
 def train_model(model, train_data, val_data):
     optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
     
-    model.compile(optimizer=optimizer, loss=sisnr_loss())
-    callbacks = [TrainingProgressCallback()]
+    # model.compile(optimizer= optimizer, loss=sisnr_loss())
+    # model.compile(optimizer= optimizer, loss=sisnr_loss)
+    model.compile(optimizer= optimizer, loss=SiSNR())
+    
+    # Callbacks
+    # adaptive_learning_rate = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=2, min_lr=0)
+    callbacks = [TrainingProgressCallback()]    
+    # callbacks = [TrainingProgressCallback(), adaptive_learning_rate]    
+    
     
     logging.info("Start model fitting")
     
     
-    history = model.fit(train_data, validation_data=val_data, epochs=EPOCHS, batch_size=BATCH_SIZE, callbacks=callbacks)
+    # Fixme, valudation data should be separate
+    history = model.fit(train_data, validation_data = val_data, epochs=EPOCHS, batch_size=BATCH_SIZE, callbacks=callbacks)
     
     logging.info("Finished model fitting")
     
     return history
 
-# Convert and preprocess audio data
-def preprocess_data(audios, labels):
-    # Assuming all audio files are of the same sample rate and length
-    # Convert audios and labels to NumPy arrays
-    audios_np = np.array(audios, dtype=object)
-    labels_np = np.array(labels)
-    return audios_np, labels_np
-
-# Create TensorFlow Dataset for batching
-def prepare_dataset(audios, labels, batch_size, dataset_name ):
-    logging.debug(f"Preparing {dataset_name} started : {len(audios)} - {len(labels)}")
-
-     
-   
-
-    dataset = tf.data.Dataset.from_tensor_slices((audios, labels))
-    dataset = dataset.batch(batch_size)
-
-    for batch in dataset.take(1):  # Take just the first batch of the dataset
-        audios1, labels1 = batch
-        print("Audio data type:", audios1.dtype)
-        print("Labels data type:", labels1.dtype)
+# # Convert and preprocess audio data
+# def preprocess_data(audios, labels):
+#     # Assuming all audio files are of the same sample rate and length
+#     # Convert audios and labels to NumPy arrays
+#     audios_np = np.array(audios, dtype=object)
+#     labels_np = np.array(labels)
+#     return audios_np, labels_np
 
  
 
-    return dataset
+    # return dataset
+
+def prepare_dataset(audios_mixed, audios_clean, batch_size):
+  
+  
+    logging.debug(f"Preparing started : {len(audios_mixed)} - {len(audios_clean)}")
+
+    # Convert Numpy Arrays to tensor and extend the dim
+    audios_mixed = tf.expand_dims(tf.convert_to_tensor(audios_mixed, dtype=tf.float64), -1)
+ 
+    # Create a dataset tensor from given training data
+    dataset_tensor = tf.data.Dataset.from_tensor_slices((audios_mixed, audios_clean))
+
+    if TENSOR_SHUFFLE:
+        dataset_tensor = dataset_tensor.shuffle(buffer_size=len(dataset_tensor))
+    
+    dataset_tensor = dataset_tensor.batch(batch_size)
+
+    return dataset_tensor
 
 # Plot training history
 def plot_history(history):
@@ -147,38 +184,62 @@ def plot_history(history):
     plt.savefig(SUBFOLDER_PATH / 'training_history.png')
     plt.close()
 
+
+ 
+
 if __name__ == "__main__":
     logging.info("Starting main execution")
     try:       
 
         if USE_GPU:
             os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-            os.environ["CUDA_VISIBLE_DEVICES"] = "2" # or "0"            
+            os.environ["CUDA_VISIBLE_DEVICES"] = "2" # or "0"  or "1"
+            
+            
+            import script_gpu_torch_based
+            script_gpu_torch_based.mask_unused_gpus(needed_memory=5000)
+            script_gpu_torch_based.tf_set_memory_usage_dynamic()
+
+            
+            # gpus = tf.config.experimental.list_physical_devices('GPU')
+            # for gpu in gpus:
+            #     tf.config.experimental.set_memory_growth(gpu, True)
+                        
             logging.info("Using GPU for training")
         else:
             os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
             logging.info("Using CPU for training")
 
-        file_names, audio_data, labels = load_audio_data(DATA_PATH)
-        train_files, test_files, train_labels, test_labels = train_test_split(audio_data, labels, test_size=0.2)
-        train_files, val_files, train_labels, val_labels = train_test_split(train_files, train_labels, test_size=0.1)
 
-        logging.info("Preparing Training Data started")
-        train_dataset = prepare_dataset(train_files, train_labels, BATCH_SIZE, "Train Dataset")
+
          
-
-        logging.info("Preparing Validation Data started")
-        val_dataset = prepare_dataset(val_files, val_labels, BATCH_SIZE, "Val Dataset")
-
-
-       
         
-        sepformer_model = Sepformer()
-        logging.info("Sepformer model initialized")
+        logging.info("Loading Data started")
+        file_names_mixed_train, audios_mixed_train, audios_clean_train = load_audio_data(DATA_PATH_MIXED_TRAIN)
+        file_names_mixed_val, audios_mixed_val, audios_clean_val = load_audio_data(DATA_PATH_MIXED_VAL)
 
-        history = train_model(sepformer_model, train_dataset, val_dataset)
+        # Split data into train and test
+        # train_audios_mixed, test_audios_mixed, train_audios_clean, test_audios_clean = train_test_split(audios_mixed, audios_clean, test_size=0.2)
+       
+
+        logging.info("Preparing Data started")
+        train_dataset = prepare_dataset(audios_mixed_train, audios_clean_train, BATCH_SIZE)
+        val_dataset = prepare_dataset(audios_mixed_val, audios_clean_val, BATCH_SIZE)
+         
+      
+        
+        # Initialize the model
+        logging.info("Sepformer model initialized")
+        sepformer_model = Sepformer()
+        
+
+        # Training the model
+        logging.info("Training started")
+        history = train_model(sepformer_model, train_dataset, val_dataset )
         logging.info("Training completed")
 
+
+        # Saving the weights and model
         sepformer_model.save(SUBFOLDER_PATH / 'model')
         sepformer_model.save_weights(SUBFOLDER_PATH / 'weights')
         logging.info("Model and weights saved")

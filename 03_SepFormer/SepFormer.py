@@ -137,9 +137,9 @@ class Sepformer(tf.keras.Model):
         # x1 = tf.expand_dims(input, axis=-1)  # Add a dimension of size 1  #FIXME: Add extra dim because of num_channels of the tensorflow
 
          # Ensure the input is expanded to 3D (batch_size, sequence_length, num_channels)
-        if len(input.shape) == 2:
-            # Reshape input from shape (batch_size, sequence_length) to (batch_size, sequence_length, 1)
-            input = tf.expand_dims(input, axis=-1) 
+        # if len(input.shape) == 2:
+        #     # Reshape input from shape (batch_size, sequence_length) to (batch_size, sequence_length, 1)
+        #     input = tf.expand_dims(input, axis=-1) 
 
 
         x1 = self.enc_conv1(input)
@@ -184,7 +184,7 @@ class Sepformer(tf.keras.Model):
         est_source = tf.expand_dims(tf.transpose(est_source,(0,2,1)),-1)
 
 
-        print(f"** My Model est_source:{est_source} - {type(est_source)}") # FIXME: check the data type
-        print(f"** My Model est_source:{est_source[:][0][0][0][0]} - {type(est_source)}") # FIXME: check the data type
+        # print(f"** My Model est_source:{est_source} - {type(est_source)}") # FIXME: check the data type
+        # print(f"** My Model est_source:{est_source[:][0][0][0][0]} - {type(est_source)}") # FIXME: check the data type
         
         return tf.cast(est_source, tf.float64)
