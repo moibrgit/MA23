@@ -135,15 +135,6 @@ def train_model(model, train_data, val_data):
     
     return history
 
-# # Convert and preprocess audio data
-# def preprocess_data(audios, labels):
-#     # Assuming all audio files are of the same sample rate and length
-#     # Convert audios and labels to NumPy arrays
-#     audios_np = np.array(audios, dtype=object)
-#     labels_np = np.array(labels)
-#     return audios_np, labels_np
-
- 
 
     # return dataset
 
