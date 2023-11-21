@@ -1,3 +1,5 @@
+# Run: /isip/Public/pallenberg/venv/sepformerTaylorTFPytorch/bin/python3.10 
+
 import os
 import tensorflow as tf
 import numpy as np
