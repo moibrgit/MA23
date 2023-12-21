@@ -82,10 +82,16 @@ def load_audio_data(file_path):
             else:
                 logging.error("Clean Audio: {clean_file_name} is not found")        
 
-           
+            print(f"Clean: {audio_clean.shape}")
+            print(f"Mixed: {audio_mixed.shape}")
+
+            audio_mixed = audio_mixed[:audio_clean.shape[0]]
 
             audios_clean.append(audio_clean)
             file_names.append(file_mixed.name)
+
+            print(f"Clean: {audio_clean.shape}")
+            print(f"Mixed: {audio_mixed.shape}")
 
         logging.debug("Audio data loaded successfully. {file.name}")
     except Exception as e:

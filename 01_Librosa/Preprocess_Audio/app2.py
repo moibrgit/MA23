@@ -85,6 +85,7 @@ def add_noise(original, noise, start_pos):
     if end_pos > len(original):
         end_pos = len(original)
         noise = noise[:end_pos - start_pos]
+
     original[start_pos:end_pos] += noise
     return original
 
@@ -163,12 +164,18 @@ def process_files():
             original_data = librosa.util.normalize(original_data)
             noise_data = librosa.util.normalize(noise_data)
 
+            
+            
+
             # Determine random start position for noise
             max_start_pos = int(len(original_data) * MAX_NOISE_START_PERCENTAGE)
             start_pos = random.randint(0, max_start_pos)
 
             # Add noise to original
             processed_data = add_noise(original_data, noise_data, start_pos)
+
+            print(original_data.shape)
+            print(processed_data.shape)
 
             # Save the new file
             target_file = DATA_FOLDER / f'merg_{original_file.stem}_{noise_file.stem}.wav'
